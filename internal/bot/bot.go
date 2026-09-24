@@ -3,38 +3,35 @@ package bot
 import (
 	"context"
 	"log"
+	"lotoMironBot/internal/bot/handlers"
 	"lotoMironBot/internal/config"
 
 	bot2 "github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 )
 
 type Bot struct {
-	cfg *config.Config
-	ctx context.Context
+	cfg     *config.Config
+	ctx     context.Context
+	handler *handlers.Handler
 }
 
-func NewBot(cfg *config.Config, ctx context.Context) *Bot {
-	return &Bot{cfg: cfg, ctx: ctx}
+func NewBot(cfg *config.Config, ctx context.Context, handler *handlers.Handler) *Bot {
+	return &Bot{cfg: cfg, ctx: ctx, handler: handler}
 }
 
 func (b *Bot) Start() {
-	bot, err := bot2.New(b.cfg.BotToken)
+	opts := []bot2.Option{
+		bot2.WithDefaultHandler(b.handler.Default),
+	}
+	bot, err := bot2.New(b.cfg.BotToken, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	bot.DeleteWebhook(b.ctx, &bot2.DeleteWebhookParams{DropPendingUpdates: true})
 
-	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/start", bot2.MatchTypeExact, func(ctx context.Context, b *bot2.Bot, update *models.Update) {
-		_, err := b.SendMessage(ctx, &bot2.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Hello",
-		})
-		if err != nil {
-			return
-		}
-	})
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/start", bot2.MatchTypeExact, b.handler.Start)
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/add_ticket", bot2.MatchTypePrefix, b.handler.AddTicket)
 
 	log.Println("Bot started")
 

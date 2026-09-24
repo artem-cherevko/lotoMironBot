@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	BotToken string `env:"BOT_TOKEN,required"`
-	DBDsn    string `env:"DB_DSN,required"`
-	AdminID  string `env:"ADMIN_ID"`
+	BotToken  string `env:"BOT_TOKEN,required"`
+	DBDsn     string `env:"DB_DSN,required"`
+	RedisAddr string `env:"REDIS_ADDR,required"`
+	AdminID   string `env:"ADMIN_ID"`
 }
 
 func Load() (*Config, error) {
