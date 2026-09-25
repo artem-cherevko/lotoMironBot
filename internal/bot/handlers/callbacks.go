@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"time"
 
 	fsm2 "lotoMironBot/internal/bot/fsm"
@@ -39,7 +40,24 @@ func (h *Handler) providePhotos(ctx context.Context, b *bot.Bot, update *models.
 
 	key := fmt.Sprintf("ticket:%s:%d", collection, chatID)
 
-	err := h.r.RPush(ctx, key, photoID).Err()
+	photos, err := h.r.LRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return err
+	}
+
+	if slices.Contains(photos, photoID) {
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			Text:      "<b>Обнаружен(и) дубликат <tg-emoji emoji-id=\"5395695537687123235\">🚨</tg-emoji></b>\nСохраняем все без дублирования.",
+			ParseMode: models.ParseModeHTML,
+		})
+		if err != nil {
+			log.Println(err)
+		}
+		return nil
+	}
+
+	err = h.r.RPush(ctx, key, photoID).Err()
 	h.r.Expire(ctx, key, 30*time.Minute)
 	if err != nil {
 		log.Println(err)

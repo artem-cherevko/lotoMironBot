@@ -19,6 +19,6 @@ type Ticket struct {
 	ID     uint   `gorm:"primaryKey"`
 	FileID string `gorm:"not null"`
 
-	Numbers    pq.StringArray `gorm:"type:text[];not null"`
-	Collection Collections    `gorm:"type:varchar(32);not null;default:'standard'"`
+	Numbers    pq.Int32Array `gorm:"type:int[];not null"`
+	Collection Collections   `gorm:"type:varchar(32);not null;default:'standard'"`
 }

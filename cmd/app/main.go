@@ -10,6 +10,7 @@ import (
 	"lotoMironBot/internal/redis"
 	"lotoMironBot/internal/repository"
 	"lotoMironBot/internal/services"
+	"lotoMironBot/internal/worker"
 
 	"github.com/go-telegram/fsm"
 )
@@ -46,5 +47,16 @@ func main() {
 
 	// Init and start bot
 	newBot := bot.NewBot(cfg, ctx, handler)
-	newBot.Start()
+	b, err := newBot.Build()
+	if err != nil {
+		panic(err)
+	}
+
+	w := worker.NewWorker(b, rdb, cfg.PPKey)
+
+	for i := 0; i < 3; i++ {
+		go w.Run(ctx)
+	}
+
+	newBot.Start(b)
 }

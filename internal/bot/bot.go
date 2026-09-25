@@ -19,21 +19,44 @@ func NewBot(cfg *config.Config, ctx context.Context, handler *handlers.Handler) 
 	return &Bot{cfg: cfg, ctx: ctx, handler: handler}
 }
 
-func (b *Bot) Start() {
+func (b *Bot) Build() (*bot2.Bot, error) {
 	opts := []bot2.Option{
 		bot2.WithDefaultHandler(b.handler.Default),
 	}
+
 	bot, err := bot2.New(b.cfg.BotToken, opts...)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	bot.DeleteWebhook(b.ctx, &bot2.DeleteWebhookParams{DropPendingUpdates: true})
+	_, err = bot.DeleteWebhook(
+		b.ctx,
+		&bot2.DeleteWebhookParams{
+			DropPendingUpdates: true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/start", bot2.MatchTypeExact, b.handler.Start)
-	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/add_ticket", bot2.MatchTypePrefix, b.handler.AddTicket)
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
+		"/start",
+		bot2.MatchTypeExact,
+		b.handler.Start,
+	)
 
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
+		"/add_ticket",
+		bot2.MatchTypePrefix,
+		b.handler.AddTicket,
+	)
+
+	return bot, nil
+}
+
+func (b *Bot) Start(bot *bot2.Bot) {
 	log.Println("Bot started")
-
 	bot.Start(b.ctx)
 }

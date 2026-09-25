@@ -10,6 +10,7 @@ type Config struct {
 	DBDsn     string `env:"DB_DSN,required"`
 	RedisAddr string `env:"REDIS_ADDR,required"`
 	AdminID   string `env:"ADMIN_ID"`
+	PPKey     string `env:"PP_KEY,required"`
 }
 
 func Load() (*Config, error) {
