@@ -10,6 +10,7 @@ import (
 	_ "image/jpeg"
 	"io"
 	"log"
+	"lotoMironBot/internal/services"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/disintegration/imaging"
@@ -32,14 +34,16 @@ const (
 type Worker struct {
 	b     *bot.Bot
 	r     *redis.Client
+	lotoS *services.LotoService
 	token string
 }
 
-func NewWorker(b *bot.Bot, r *redis.Client, token string) *Worker {
+func NewWorker(b *bot.Bot, r *redis.Client, token string, lotoS *services.LotoService) *Worker {
 	return &Worker{
 		b:     b,
 		r:     r,
 		token: token,
+		lotoS: lotoS,
 	}
 }
 
@@ -48,7 +52,7 @@ var (
 	numberRegex  = regexp.MustCompile(`\d+`)
 )
 
-func (w *Worker) Process(ctx context.Context, fileID string) ([]int, error) {
+func (w *Worker) Process(ctx context.Context, fileID string) ([]int32, error) {
 	// Telegram GetFile
 	file, err := w.b.GetFile(ctx, &bot.GetFileParams{
 		FileID: fileID,
@@ -111,7 +115,7 @@ func (w *Worker) Process(ctx context.Context, fileID string) ([]int, error) {
 	return numbers, nil
 }
 
-func (w *Worker) OCR(ctx context.Context, path string) ([]int, error) {
+func (w *Worker) OCR(ctx context.Context, path string) ([]int32, error) {
 	// Только один запрос одновременно
 	ocrSemaphore <- struct{}{}
 	defer func() {
@@ -374,7 +378,7 @@ DONE:
 	}
 
 	// Парсим числа
-	var numbers []int
+	var numbers []int32
 
 	for _, line := range bytes.Split(data, []byte("\n")) {
 		line = bytes.TrimSpace(line)
@@ -408,7 +412,7 @@ DONE:
 						continue
 					}
 
-					numbers = append(numbers, n)
+					numbers = append(numbers, int32(n))
 				}
 			}
 		}
@@ -469,8 +473,7 @@ func (w *Worker) Run(ctx context.Context) {
 				numbers,
 			)
 
-			// TODO:
-			// здесь потом сохраняем numbers в БД
+			w.lotoS.AddTicket(ctx, fileID, strings.Split(key, ":")[1], numbers)
 		}
 	}
 }

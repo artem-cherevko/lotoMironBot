@@ -13,5 +13,8 @@ func Connect(dsn string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	db.AutoMigrate(&Ticket{})
+
 	return db, nil
 }

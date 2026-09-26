@@ -8,15 +8,17 @@ import (
 )
 
 type Handler struct {
-	uService *services.UserService
-	r        *redis.Client
-	f        *fsm.FSM
+	uService    *services.UserService
+	lotoService *services.LotoService
+	r           *redis.Client
+	f           *fsm.FSM
 }
 
-func NewHandler(uService *services.UserService, f *fsm.FSM, r *redis.Client) *Handler {
+func NewHandler(uService *services.UserService, f *fsm.FSM, r *redis.Client, lotoService *services.LotoService) *Handler {
 	return &Handler{
-		uService: uService,
-		f:        f,
-		r:        r,
+		uService:    uService,
+		f:           f,
+		r:           r,
+		lotoService: lotoService,
 	}
 }

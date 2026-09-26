@@ -40,10 +40,14 @@ func main() {
 	uRepo := repository.NewUserRepo(db)
 	uService := services.NewUserService(uRepo)
 
+	// Loto
+	lotoRepo := repository.NewLotoRepo(db)
+	lotoService := services.NewLotoService(lotoRepo)
+
 	f := fsm.New(fsm2.StateDefault, nil)
 
 	// HANDLER
-	handler := handlers.NewHandler(uService, f, rdb)
+	handler := handlers.NewHandler(uService, f, rdb, lotoService)
 
 	// Init and start bot
 	newBot := bot.NewBot(cfg, ctx, handler)
@@ -52,7 +56,7 @@ func main() {
 		panic(err)
 	}
 
-	w := worker.NewWorker(b, rdb, cfg.PPKey)
+	w := worker.NewWorker(b, rdb, cfg.PPKey, lotoService)
 
 	for i := 0; i < 3; i++ {
 		go w.Run(ctx)

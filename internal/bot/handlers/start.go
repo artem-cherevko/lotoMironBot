@@ -8,7 +8,7 @@ import (
 )
 
 func (h *Handler) Start(ctx context.Context, b *bot.Bot, update *models.Update) {
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text: `🎱 <b>Русское лото</b>
 
@@ -24,7 +24,4 @@ func (h *Handler) Start(ctx context.Context, b *bot.Bot, update *models.Update) 
 🍀 <i>Удачи! Пусть именно твой билет окажется счастливым.</i>`,
 		ParseMode: "HTML",
 	})
-	if err != nil {
-		return
-	}
 }

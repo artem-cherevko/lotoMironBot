@@ -53,6 +53,13 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 		b.handler.AddTicket,
 	)
 
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
+		"/tickets",
+		bot2.MatchTypeExact,
+		b.handler.GetTickets,
+	)
+
 	return bot, nil
 }
 

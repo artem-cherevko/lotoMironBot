@@ -16,7 +16,7 @@ const (
 )
 
 type Ticket struct {
-	ID     uint   `gorm:"primaryKey"`
+	ID     uint   `gorm:"primaryKey;autoIncrement"`
 	FileID string `gorm:"not null"`
 
 	Numbers    pq.Int32Array `gorm:"type:int[];not null"`
