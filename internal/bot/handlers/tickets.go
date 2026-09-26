@@ -39,9 +39,11 @@ func (h *Handler) GetTickets(ctx context.Context, b *bot.Bot, update *models.Upd
 		fmt.Fprintf(
 			&text,
 			"🎫 <b>Билет №%d</b>\n"+
-				"🔢 %s\n\n",
+				"🔢 %s\n"+
+				"🔖 Коллекция: %s\n\n",
 			t.ID,
 			strings.Join(numbers, " • "),
+			t.Collection,
 		)
 	}
 

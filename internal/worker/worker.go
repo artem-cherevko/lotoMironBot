@@ -473,7 +473,8 @@ func (w *Worker) Run(ctx context.Context) {
 				numbers,
 			)
 
-			w.lotoS.AddTicket(ctx, fileID, strings.Split(key, ":")[1], numbers)
+			collection := strings.TrimSuffix(strings.Split(key, ":")[1], "-collection")
+			w.lotoS.AddTicket(ctx, fileID, collection, numbers)
 		}
 	}
 }

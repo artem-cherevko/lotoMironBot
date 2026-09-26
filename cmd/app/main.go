@@ -58,9 +58,7 @@ func main() {
 
 	w := worker.NewWorker(b, rdb, cfg.PPKey, lotoService)
 
-	for i := 0; i < 3; i++ {
-		go w.Run(ctx)
-	}
+	go w.Run(ctx)
 
 	newBot.Start(b)
 }
