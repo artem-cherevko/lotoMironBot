@@ -60,6 +60,13 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 		b.handler.GetTickets,
 	)
 
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
+		"/startgame",
+		bot2.MatchTypeExact,
+		b.handler.StartGame,
+	)
+
 	return bot, nil
 }
 

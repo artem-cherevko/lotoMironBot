@@ -441,6 +441,11 @@ func (w *Worker) Run(ctx context.Context) {
 			continue
 		}
 
+		if len(keys) == 0 {
+			time.Sleep(time.Second)
+			continue
+		}
+
 		for _, key := range keys {
 			result, err := w.r.BRPop(
 				ctx,
