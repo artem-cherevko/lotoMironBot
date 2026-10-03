@@ -14,7 +14,7 @@ func Connect(dsn string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Ticket{})
+	db.AutoMigrate(&Ticket{}, &GameTicket{}, &Game{})
 
 	return db, nil
 }
