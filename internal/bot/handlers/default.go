@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strings"
 
 	fsm2 "lotoMironBot/internal/bot/fsm"
 
@@ -24,6 +25,35 @@ func (h *Handler) Default(ctx context.Context, b *bot.Bot, update *models.Update
 	}
 
 	state := h.f.Current(userID)
+	if update.Message != nil && state == fsm2.StateOwnerRules {
+		owner, err := h.uService.IsOwner(ctx, userID)
+		if err != nil || !owner {
+			h.f.Transition(userID, fsm2.StateDefault)
+			sendText(ctx, b, update.Message.Chat.ID, "Недостаточно прав.")
+			return
+		}
+		if update.Message.Chat.Type != models.ChatTypePrivate {
+			sendText(ctx, b, update.Message.Chat.ID, "Отправьте новый текст правил в личном чате с ботом.")
+			return
+		}
+		if err := h.lotoService.SetRules(ctx, update.Message.Text); err != nil {
+			sendText(ctx, b, update.Message.Chat.ID, "Не удалось сохранить правила. Отправьте текст ещё раз.")
+			return
+		}
+		h.f.Transition(userID, fsm2.StateDefault)
+		sendText(ctx, b, update.Message.Chat.ID, "📖 Правила сохранены и уже доступны игрокам.")
+		return
+	}
+	if update.Message != nil && update.Message.Chat.Type == models.ChatTypePrivate {
+		switch strings.TrimSpace(update.Message.Text) {
+		case "🎟 Мои билеты":
+			h.PrivateMyTickets(ctx, b, update)
+			return
+		case "📖 Правила игры":
+			h.ShowRules(ctx, b, update.Message.Chat.ID)
+			return
+		}
+	}
 
 	switch state {
 	case fsm2.StateSelectCollection:

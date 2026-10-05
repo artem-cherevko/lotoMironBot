@@ -23,26 +23,21 @@ func (h *Handler) CreateGame(ctx context.Context, b *bot.Bot, update *models.Upd
 		sendNotAdmin(ctx, b, update.Message.Chat.ID)
 		return
 	}
-	parts := strings.Fields(update.Message.Text)
-	if len(parts) < 2 || len(parts) > 3 {
-		sendText(ctx, b, update.Message.Chat.ID, "Использование: /game <количество игроков> [standard|new-year|halloween]")
-		return
-	}
-	limit, err := strconv.Atoi(parts[1])
+	collection, err := h.lotoService.GetDefaultCollection(ctx)
 	if err != nil {
-		sendText(ctx, b, update.Message.Chat.ID, "Количество игроков должно быть числом.")
+		sendText(ctx, b, update.Message.Chat.ID, "Не удалось получить стандартную коллекцию игры.")
 		return
 	}
-	collection := database.Standard
-	if len(parts) == 3 {
-		collection = database.Collections(parts[2])
-	}
-	game, err := h.lotoService.CreateGame(ctx, update.Message.From.ID, update.Message.Chat.ID, limit, collection)
+	_, err = h.lotoService.CreateGame(ctx, update.Message.From.ID, update.Message.Chat.ID, 0, collection)
 	if err != nil {
 		sendText(ctx, b, update.Message.Chat.ID, gameErrorText(err))
 		return
 	}
-	sendText(ctx, b, update.Message.Chat.ID, fmt.Sprintf("Игра №%d создана. Максимум игроков: %d. Выдавайте билеты ответом на сообщение игрока: /gticket <1-5>.", game.ID, game.ParticipantLimit))
+	sendText(ctx, b, update.Message.Chat.ID, gameCreatedText())
+}
+
+func gameCreatedText() string {
+	return "🎰 ИГРА СОЗДАНА!\n\n🍀 Приобретайте свой счастливый билетик и испытайте удачу!\n\n🔥 Следите за бочонками и не упустите свой шанс на победу!"
 }
 
 func (h *Handler) GiveTickets(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -76,9 +71,8 @@ func (h *Handler) GiveTickets(ctx context.Context, b *bot.Bot, update *models.Up
 	sent := 0
 	for _, assignment := range assignments {
 		_, err := b.SendPhoto(ctx, &bot.SendPhotoParams{
-			ChatID:  assignment.PlayerID,
-			Photo:   &models.InputFileString{Data: assignment.Ticket.FileID},
-			Caption: fmt.Sprintf("🎫 Билет №%d", assignment.Ticket.ID),
+			ChatID: assignment.PlayerID,
+			Photo:  &models.InputFileString{Data: assignment.Ticket.FileID},
 		})
 		if err == nil {
 			sent++
@@ -109,7 +103,6 @@ func (h *Handler) MyTickets(ctx context.Context, b *bot.Bot, update *models.Upda
 		_, _ = b.SendPhoto(ctx, &bot.SendPhotoParams{
 			ChatID:          update.Message.Chat.ID,
 			Photo:           &models.InputFileString{Data: ticket.FileID},
-			Caption:         "🎫 Ваш билет",
 			ReplyParameters: &models.ReplyParameters{MessageID: update.Message.ID, AllowSendingWithoutReply: true},
 		})
 	}
@@ -123,7 +116,7 @@ func (h *Handler) StartGame(ctx context.Context, b *bot.Bot, update *models.Upda
 		sendText(ctx, b, update.Message.Chat.ID, gameErrorText(err))
 		return
 	}
-	sendTextWithKeyboard(ctx, b, update.Message.Chat.ID, "Игра началась. Администратор может вытянуть первый бочонок кнопкой.", DrawBarrelKeyboard())
+	sendTextWithKeyboard(ctx, b, update.Message.Chat.ID, "🔥 ВСЁ, ПОЕХАЛИ! 🔥\n\n🎟 Билетики куплены.\n🎱 Бочонки готовы.\n🍀 Удача уже выбирает своего победителя…\n\n👀 Не отвлекайтесь ни на секунду — ваше число может выпасть прямо сейчас!\n\n🎰 Игра началась.\nПогнали за победой! 🏆🔥", DrawBarrelKeyboard())
 }
 
 func (h *Handler) EndGame(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -191,7 +184,7 @@ func (h *Handler) closeClaimWindow(chatID int64, messageID int, gameID uint, dra
 	}
 	_, _ = b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{
 		ChatID: chatID, MessageID: messageID,
-		ReplyMarkup: DrawBarrelKeyboard(),
+		ReplyMarkup: NextBarrelKeyboard(),
 	})
 }
 
@@ -226,12 +219,12 @@ func (h *Handler) ClaimNumber(ctx context.Context, b *bot.Bot, update *models.Up
 	if query.From.Username != "" {
 		playerName = "@" + query.From.Username
 	}
-	dmText := fmt.Sprintf("❌ Число %d отсутствует в ваших активных билетах. Ошибок: %d из 3.", number64, result.Failures)
+	dmText := fmt.Sprintf("❌ Число %d отсутствует в ваших активных билетах. Ошибок: %d из 9.", number64, result.Failures)
 	if result.Success {
 		dmText = fmt.Sprintf("✅ Успешно! Число %d отмечено в ваших билетах.", number64)
 	}
 	if result.Disqualified {
-		dmText = "Вы дисквалифицированы за три неверных ответа."
+		dmText = "Вы дисквалифицированы за девять неверных нажатий."
 	}
 	if _, dmErr := b.SendMessage(ctx, &bot.SendMessageParams{ChatID: query.From.ID, Text: dmText}); dmErr != nil {
 		answerCallback(ctx, b, query.ID, dmText+" Если это личное сообщение не пришло, отправьте боту /start.", true)
@@ -243,13 +236,13 @@ func (h *Handler) ClaimNumber(ctx context.Context, b *bot.Bot, update *models.Up
 		_, _ = b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{ChatID: chat.ID, MessageID: query.Message.Message.ID})
 		finalText := fmt.Sprintf("🚫 %s дисквалифицирован(а). Игра завершена: других игроков не осталось.", playerName)
 		if result.Winner {
-			finalText = fmt.Sprintf("🏆 <a href=\"tg://user?id=%d\">Победитель</a> закрыл билет и победил!", query.From.ID)
+			finalText = fmt.Sprintf("🏆 %s победил(а)!\n✅ Закрыто билетов: %d.\n🎉 Игра завершена.", playerName, result.ClosedTickets)
 		}
 		sendText(ctx, b, chat.ID, finalText)
 		return
 	}
 	if result.Disqualified {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{ChatID: chat.ID, Text: fmt.Sprintf("🚫 %s дисквалифицирован(а) за три неверных ответа. Игра продолжается.", playerName)})
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{ChatID: chat.ID, Text: fmt.Sprintf("🚫 %s дисквалифицирован(а) за девять неверных нажатий. Игра продолжается.", playerName)})
 	}
 }
 

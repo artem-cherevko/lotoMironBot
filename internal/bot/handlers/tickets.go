@@ -10,6 +10,11 @@ import (
 )
 
 func (h *Handler) GetTickets(ctx context.Context, b *bot.Bot, update *models.Update) {
+	owner, err := h.uService.IsOwner(ctx, update.Message.From.ID)
+	if err != nil || !owner {
+		sendText(ctx, b, update.Message.Chat.ID, "Команда доступна только владельцу бота.")
+		return
+	}
 	tickets, err := h.lotoService.GetAllTickets(ctx)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{

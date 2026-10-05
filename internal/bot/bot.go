@@ -85,6 +85,10 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 		bot2.MatchTypePrefix,
 		b.handler.PromoteAdmin,
 	)
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/owner", bot2.MatchTypeExact, b.handler.OwnerPanel)
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/admin", bot2.MatchTypeExact, b.handler.AdminPanel)
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/addadmin", bot2.MatchTypePrefix, b.handler.AddAdmin)
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/removeadmin", bot2.MatchTypePrefix, b.handler.RemoveAdmin)
 
 	bot.RegisterHandler(
 		bot2.HandlerTypeCallbackQueryData,
@@ -99,6 +103,8 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 		bot2.MatchTypePrefix,
 		b.handler.ClaimNumber,
 	)
+	bot.RegisterHandler(bot2.HandlerTypeCallbackQueryData, "admin:", bot2.MatchTypePrefix, b.handler.AdminCallback)
+	bot.RegisterHandler(bot2.HandlerTypeCallbackQueryData, "owner:", bot2.MatchTypePrefix, b.handler.OwnerCallback)
 
 	return bot, nil
 }

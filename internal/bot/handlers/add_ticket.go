@@ -10,9 +10,15 @@ import (
 )
 
 func (h *Handler) AddTicket(ctx context.Context, b *bot.Bot, update *models.Update) {
+	owner, err := h.uService.IsOwner(ctx, update.Message.From.ID)
+	if err != nil || !owner {
+		sendText(ctx, b, update.Message.Chat.ID, "Команда доступна только владельцу бота.")
+		return
+	}
+
 	h.f.Transition(update.Message.From.ID, fsm.StateSelectCollection)
 
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		Text:        "Выбери коллекцию билетов:",
 		ReplyMarkup: CollectionsKeyboard(),

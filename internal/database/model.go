@@ -63,10 +63,11 @@ type Game struct {
 	Collection Collections `gorm:"type:varchar(32);not null;default:'standard'"`
 	Status     GameStatus  `gorm:"type:varchar(16);not null;default:'pending';index"`
 
-	ParticipantLimit int    `gorm:"not null"`
-	TicketsPerPlayer int    `gorm:"not null;default:1"`
-	WinnerPlayerID   *int64 `gorm:"index"`
-	LastDrawAt       *time.Time
+	ParticipantLimit  int    `gorm:"not null"`
+	TicketsPerPlayer  int    `gorm:"not null;default:1"`
+	WinnerPlayerID    *int64 `gorm:"index"`
+	WinnerTicketCount int    `gorm:"not null;default:0"`
+	LastDrawAt        *time.Time
 
 	// Перемешанные числа 1-100.
 	// Например: [73, 18, 46, 92, ...]
@@ -79,6 +80,12 @@ type Game struct {
 	StartedAt  *time.Time
 	FinishedAt *time.Time
 	CanceledAt *time.Time
+}
+
+type GameSettings struct {
+	Key       string `gorm:"primaryKey;size:64"`
+	Value     string `gorm:"type:text;not null"`
+	UpdatedAt time.Time
 }
 
 // GameParticipant — игрок, зарегистрировавшийся в конкретной игре.

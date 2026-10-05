@@ -19,19 +19,8 @@ func (h *Handler) Start(ctx context.Context, b *bot.Bot, update *models.Update) 
 		return
 	}
 	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text: `🎱 <b>Русское лото</b>
-
-Добро пожаловать в игру!
-
-🎟 Получи свой билет у администратора
-🎲 Дождись начала розыгрыша
-🪵 Следи за выпадающими бочонками
-🏆 Закрой все 6 чисел и забери победу!
-
-Твои билеты будут сохранены здесь, поэтому ты всегда сможешь посмотреть их перед игрой.
-
-🍀 <i>Удачи! Пусть именно твой билет окажется счастливым.</i>`,
-		ParseMode: "HTML",
+		ChatID:      update.Message.Chat.ID,
+		Text:        "🎱 Русское лото\n\nДобро пожаловать! Здесь можно посмотреть свои билеты и правила игры.\n\n🍀 Удачи!",
+		ReplyMarkup: PrivateMenuKeyboard(),
 	})
 }

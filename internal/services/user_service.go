@@ -36,6 +36,10 @@ func (s *UserService) SetRole(ctx context.Context, telegramID int64, role databa
 	return s.repo.SetRole(ctx, telegramID, role)
 }
 
+func (s *UserService) ListAdmins(ctx context.Context) ([]*database.User, error) {
+	return s.repo.ListAdmins(ctx)
+}
+
 func (s *UserService) IsAdmin(ctx context.Context, telegramID int64) (bool, error) {
 	user, err := s.repo.GetByTelegramID(ctx, telegramID)
 	if err != nil {

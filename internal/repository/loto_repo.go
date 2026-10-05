@@ -178,12 +178,67 @@ func (r *LotoRepository) GetTicketByID(ctx context.Context, ticketID uint) (*dat
 	return &ticket, nil
 }
 
+func (r *LotoRepository) ListLatestPlayerGameTickets(ctx context.Context, playerID int64) ([]*database.GameTicket, error) {
+	var tickets []*database.GameTicket
+	err := r.db.WithContext(ctx).Where("player_id = ? AND game_id = (SELECT id FROM games WHERE status IN ? AND id IN (SELECT game_id FROM game_participants WHERE player_id = ?) ORDER BY id DESC LIMIT 1)", playerID, []database.GameStatus{database.GamePending, database.GameStarted}, playerID).Order("id ASC").Find(&tickets).Error
+	return tickets, err
+}
+
 func (r *LotoRepository) CountPlayerGameTickets(ctx context.Context, gameID uint, playerID int64) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&database.GameTicket{}).
 		Where("game_id = ? AND player_id = ?", gameID, playerID).
 		Count(&count).Error
 	return count, err
+}
+
+func (r *LotoRepository) SaveSettings(ctx context.Context, key, value string) error {
+	setting := database.GameSettings{Key: key, Value: value}
+	return r.db.WithContext(ctx).Save(&setting).Error
+}
+
+func (r *LotoRepository) GetSettings(ctx context.Context, key string) (string, error) {
+	var setting database.GameSettings
+	err := r.db.WithContext(ctx).First(&setting, "key = ?", key).Error
+	return setting.Value, err
+}
+
+func (r *LotoRepository) ListAdmins(ctx context.Context) ([]*database.User, error) {
+	var users []*database.User
+	err := r.db.WithContext(ctx).Where("role = ?", database.RoleAdmin).Order("telegram_id ASC").Find(&users).Error
+	return users, err
+}
+
+func (r *LotoRepository) ListActiveGameStats(ctx context.Context, chatID int64) (*database.Game, []*database.GameParticipant, []*database.GameTicket, error) {
+	game, err := r.FindActiveGameByChat(ctx, chatID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	participants, err := r.ListGameParticipants(ctx, game.ID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	tickets, err := r.GetGameTickets(ctx, game.ID)
+	return game, participants, tickets, err
+}
+
+func (r *LotoRepository) ListLatestGameStats(ctx context.Context, chatID int64) (*database.Game, []*database.GameParticipant, []*database.GameTicket, error) {
+	var game database.Game
+	if err := r.db.WithContext(ctx).Where("chat_id = ?", chatID).Order("id DESC").First(&game).Error; err != nil {
+		return nil, nil, nil, err
+	}
+	participants, err := r.ListGameParticipants(ctx, game.ID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	tickets, err := r.GetGameTickets(ctx, game.ID)
+	return &game, participants, tickets, err
+}
+
+func (r *LotoRepository) ListWinners(ctx context.Context, gameID uint) ([]*database.Game, error) {
+	var games []*database.Game
+	err := r.db.WithContext(ctx).Where("id = ? AND winner_player_id IS NOT NULL", gameID).Find(&games).Error
+	return games, err
 }
 
 func (r *LotoRepository) ListAvailableTickets(ctx context.Context, gameID uint, collection database.Collections, limit int) ([]*database.Ticket, error) {

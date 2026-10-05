@@ -7,6 +7,7 @@ import (
 	"lotoMironBot/internal/database"
 	"lotoMironBot/internal/repository"
 	"math/rand/v2"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -48,12 +49,54 @@ type DrawResult struct {
 }
 
 type ClaimResult struct {
-	Success      bool
+	Success       bool
+	Failures      int
+	Disqualified  bool
+	Winner        bool
+	GameFinished  bool
+	ClosedTickets int
+}
+
+type PlayerGameStat struct {
+	PlayerID     int64
+	Tickets      int
+	Closed       int
 	Failures     int
 	Disqualified bool
 	Winner       bool
-	GameFinished bool
 }
+
+func allTicketsClosed(total, closed int) bool {
+	return total > 0 && closed == total
+}
+
+func reachedMissLimit(failures int) bool {
+	return failures >= 9
+}
+
+func isTicketClosed(ticket *database.GameTicket) bool {
+	return ticket.Completed || len(ticket.Numbers) == 0 || len(ticket.MarkedNumbers) >= 6
+}
+
+const DefaultRules = `🎟 ПРАВИЛА ИГРЫ В ЛОТО
+
+• Можно приобрести до 5 билетов.
+• В каждом билете — 6 случайных чисел от 1 до 100.
+• Выигрышный билет — тот, в котором зачёркнуты все 6 чисел.
+• Игра проходит в чате, где были приобретены билеты.
+
+⏱ 15 секунд на реакцию
+После выпадения вашего числа у вас есть 15 секунд, чтобы нажать кнопку «У меня есть».
+
+⚠️ Если вы пропустили своё число и не нажали кнопку вовремя — билет считается проигравшим.
+
+❌ Ошибочные нажатия
+Если вы нажали «У меня есть» на число, которого нет ни в одном вашем билете, это считается ошибкой.
+У каждого игрока есть 9 ошибок. После 9 ошибочных нажатий происходит автоматическая дисквалификация.
+
+Следите за игрой внимательно! Заранее выпишите числа со своих билетов.
+
+🏆 Игра автоматически останавливается, когда у одного из игроков закрыты все его билеты.`
 
 func NewLotoService(repo *repository.LotoRepository) *LotoService {
 	return &LotoService{
@@ -80,10 +123,109 @@ func (s *LotoService) GetAllTickets(ctx context.Context) ([]*database.Ticket, er
 	return s.repo.GetAllTickets(ctx)
 }
 
-func (s *LotoService) CreateGame(ctx context.Context, adminID, chatID int64, participantLimit int, collection database.Collections) (*database.Game, error) {
-	if participantLimit < 1 {
-		return nil, fmt.Errorf("participant limit must be positive")
+func (s *LotoService) GetRules(ctx context.Context) (string, error) {
+	rules, err := s.repo.GetSettings(ctx, "game_rules")
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return DefaultRules, nil
 	}
+	return rules, err
+}
+
+func (s *LotoService) SetRules(ctx context.Context, rules string) error {
+	if strings.TrimSpace(rules) == "" {
+		return fmt.Errorf("rules cannot be empty")
+	}
+	return s.repo.SaveSettings(ctx, "game_rules", rules)
+}
+
+func (s *LotoService) GetDefaultCollection(ctx context.Context) (database.Collections, error) {
+	collection, err := s.repo.GetSettings(ctx, "default_game_collection")
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return database.Standard, nil
+	}
+	return database.Collections(collection), err
+}
+
+func (s *LotoService) SetDefaultCollection(ctx context.Context, collection database.Collections) error {
+	switch collection {
+	case database.Standard, database.NewYear, database.Halloween:
+		return s.repo.SaveSettings(ctx, "default_game_collection", string(collection))
+	default:
+		return fmt.Errorf("invalid game collection: %s", collection)
+	}
+}
+
+func (s *LotoService) GetPlayerGameStats(ctx context.Context, chatID int64) ([]PlayerGameStat, error) {
+	_, participants, tickets, err := s.repo.ListLatestGameStats(ctx, chatID)
+	if err != nil {
+		return nil, err
+	}
+	stats := make([]PlayerGameStat, 0, len(participants))
+	byID := make(map[int64]int, len(participants))
+	for _, p := range participants {
+		byID[p.PlayerID] = len(stats)
+		stats = append(stats, PlayerGameStat{PlayerID: p.PlayerID, Failures: p.Failures, Disqualified: p.Disqualified})
+	}
+	for _, ticket := range tickets {
+		i, ok := byID[ticket.PlayerID]
+		if !ok {
+			continue
+		}
+		stats[i].Tickets++
+		if isTicketClosed(ticket) {
+			stats[i].Closed++
+		}
+	}
+	for i := range stats {
+		stats[i].Winner = stats[i].Tickets > 0 && stats[i].Tickets == stats[i].Closed
+	}
+	return stats, nil
+}
+
+func (s *LotoService) GetGameWinners(ctx context.Context, chatID int64) ([]PlayerGameStat, error) {
+	_, participants, tickets, err := s.repo.ListLatestGameStats(ctx, chatID)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[int64]PlayerGameStat, len(participants))
+	for _, p := range participants {
+		byID[p.PlayerID] = PlayerGameStat{PlayerID: p.PlayerID, Failures: p.Failures, Disqualified: p.Disqualified}
+	}
+	for _, ticket := range tickets {
+		stat := byID[ticket.PlayerID]
+		stat.Tickets++
+		if isTicketClosed(ticket) {
+			stat.Closed++
+		}
+		byID[ticket.PlayerID] = stat
+	}
+	var winners []PlayerGameStat
+	for _, stat := range byID {
+		if stat.Tickets > 0 && stat.Tickets == stat.Closed {
+			stat.Winner = true
+			winners = append(winners, stat)
+		}
+	}
+	return winners, nil
+}
+
+func (s *LotoService) GetPlayerTicketsPrivate(ctx context.Context, playerID int64) ([]*database.Ticket, error) {
+	gameTickets, err := s.repo.ListLatestPlayerGameTickets(ctx, playerID)
+	if err != nil {
+		return nil, err
+	}
+	tickets := make([]*database.Ticket, 0, len(gameTickets))
+	for _, gameTicket := range gameTickets {
+		ticket, err := s.repo.GetTicketByID(ctx, gameTicket.TicketID)
+		if err != nil {
+			return nil, err
+		}
+		tickets = append(tickets, ticket)
+	}
+	return tickets, nil
+}
+
+func (s *LotoService) CreateGame(ctx context.Context, adminID, chatID int64, participantLimit int, collection database.Collections) (*database.Game, error) {
 	if collection != database.Standard && collection != database.NewYear && collection != database.Halloween {
 		return nil, fmt.Errorf("unknown ticket collection")
 	}
@@ -154,13 +296,6 @@ func (s *LotoService) GiveTickets(ctx context.Context, chatID, playerID int64, d
 			return err
 		}
 		if !registered {
-			count, err := repo.CountGameParticipants(ctx, game.ID)
-			if err != nil {
-				return err
-			}
-			if count >= int64(game.ParticipantLimit) {
-				return ErrParticipantLimit
-			}
 			if err := repo.CreateGameParticipant(ctx, &database.GameParticipant{GameID: game.ID, PlayerID: playerID}); err != nil {
 				return err
 			}
@@ -366,18 +501,31 @@ func (s *LotoService) ClaimDrawNumber(ctx context.Context, chatID int64, gameID 
 			ticket.MarkedNumbers = append(ticket.MarkedNumbers, drawnNumber)
 			if len(ticket.Numbers) == 0 {
 				ticket.Completed = true
-				result.Winner = true
 			}
 			if err := repo.SaveGameTicket(ctx, ticket); err != nil {
 				return err
 			}
 		}
 		if matched {
+			playerTickets, err := repo.ListPlayerGameTickets(ctx, gameID, playerID)
+			if err != nil {
+				return err
+			}
+			closed := 0
+			for _, ticket := range playerTickets {
+				if isTicketClosed(ticket) {
+					closed++
+				}
+			}
+			result.ClosedTickets = closed
+			result.Winner = allTicketsClosed(len(playerTickets), closed)
+		}
+		if matched {
 			result.Success = true
 		} else {
 			participant.Failures++
 			result.Failures = participant.Failures
-			if participant.Failures >= 3 {
+			if reachedMissLimit(participant.Failures) {
 				participant.Disqualified = true
 				result.Disqualified = true
 			}
@@ -391,6 +539,7 @@ func (s *LotoService) ClaimDrawNumber(ctx context.Context, chatID int64, gameID 
 			game.Status = database.GameFinished
 			game.FinishedAt = &now
 			game.WinnerPlayerID = &playerID
+			game.WinnerTicketCount = result.ClosedTickets
 			result.GameFinished = true
 		} else if result.Disqualified {
 			remaining, err := repo.CountEligibleParticipants(ctx, gameID, game.AdminID)

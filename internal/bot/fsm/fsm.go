@@ -13,6 +13,7 @@ const (
 	StateSelectCollection fsm.StateID = "select_collection"
 	StateProvidePhotos    fsm.StateID = "provide_photos"
 	StateFinish           fsm.StateID = "finish"
+	StateOwnerRules       fsm.StateID = "owner_rules"
 
 	DataFileIDs = "data-file-ids"
 )

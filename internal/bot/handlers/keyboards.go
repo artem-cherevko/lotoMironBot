@@ -45,7 +45,46 @@ func ClaimNumberKeyboard(gameID uint, number int32, drawIndex int) *models.Inlin
 	return &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
 			{{Text: fmt.Sprintf("У меня есть %d", number), Style: "success", CallbackData: fmt.Sprintf("game:claim:%d:%d:%d", gameID, number, drawIndex)}},
-			{{Text: "Следующий бочонок", Style: "primary", CallbackData: "game:draw"}},
 		},
 	}
+}
+
+func NextBarrelKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{
+		{Text: "Следующий бочонок", Style: "primary", CallbackData: "game:draw"},
+	}}}
+}
+
+func PrivateMenuKeyboard() *models.ReplyKeyboardMarkup {
+	return &models.ReplyKeyboardMarkup{ResizeKeyboard: true, Keyboard: [][]models.KeyboardButton{{{Text: "🎟 Мои билеты"}}, {{Text: "📖 Правила игры"}}}}
+}
+
+func AdminPanelKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{
+		{{Text: "🎮 Создать игру", CallbackData: "admin:create_game"}},
+		{{Text: "🎮 Текущая игра", CallbackData: "admin:current"}},
+		{{Text: "👥 Игроки", CallbackData: "admin:players"}},
+		{{Text: "🏆 Победители", CallbackData: "admin:winners"}},
+	}}
+}
+
+func OwnerPanelKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{
+		{{Text: "👥 Администраторы", CallbackData: "owner:admins"}},
+		{{Text: "📖 Правила игры", CallbackData: "owner:rules"}},
+		{{Text: "🎟 Коллекция для игр", CallbackData: "owner:collection"}},
+		{{Text: "🎮 Управление играми", CallbackData: "admin:current"}},
+	}}
+}
+
+func DefaultCollectionKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{
+		{{Text: "Стандартная", CallbackData: "owner:set_collection:standard"}},
+		{{Text: "Новогодняя", CallbackData: "owner:set_collection:new-year"}},
+		{{Text: "Хэллоуинская", CallbackData: "owner:set_collection:halloween"}},
+	}}
+}
+
+func RulesKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "✏️ Изменить правила", CallbackData: "owner:edit_rules"}}}}
 }
