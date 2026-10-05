@@ -23,6 +23,24 @@ const (
 	GameFinished GameStatus = "finished"
 )
 
+type UserRole string
+
+const (
+	RolePlayer UserRole = "player"
+	RoleAdmin  UserRole = "admin"
+	RoleOwner  UserRole = "owner"
+)
+
+type User struct {
+	TelegramID int64    `gorm:"primaryKey;autoIncrement:false"`
+	Username   string   `gorm:"size:64"`
+	FirstName  string   `gorm:"size:128"`
+	LastName   string   `gorm:"size:128"`
+	Role       UserRole `gorm:"type:varchar(16);not null;default:'player';index"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 // Ticket — постоянный пул подготовленных билетов.
 type Ticket struct {
 	ID uint `gorm:"primaryKey;autoIncrement"`
@@ -40,9 +58,15 @@ type Game struct {
 
 	// Telegram ID администратора, который создал/ведёт игру.
 	AdminID int64 `gorm:"not null;index"`
+	ChatID  int64 `gorm:"not null;index"`
 
 	Collection Collections `gorm:"type:varchar(32);not null;default:'standard'"`
 	Status     GameStatus  `gorm:"type:varchar(16);not null;default:'pending';index"`
+
+	ParticipantLimit int    `gorm:"not null"`
+	TicketsPerPlayer int    `gorm:"not null;default:1"`
+	WinnerPlayerID   *int64 `gorm:"index"`
+	LastDrawAt       *time.Time
 
 	// Перемешанные числа 1-100.
 	// Например: [73, 18, 46, 92, ...]
@@ -55,6 +79,19 @@ type Game struct {
 	StartedAt  *time.Time
 	FinishedAt *time.Time
 	CanceledAt *time.Time
+}
+
+// GameParticipant — игрок, зарегистрировавшийся в конкретной игре.
+type GameParticipant struct {
+	ID uint `gorm:"primaryKey;autoIncrement"`
+
+	GameID               uint  `gorm:"not null;uniqueIndex:idx_game_participant"`
+	PlayerID             int64 `gorm:"not null;uniqueIndex:idx_game_participant"`
+	Failures             int   `gorm:"not null;default:0"`
+	Disqualified         bool  `gorm:"not null;default:false"`
+	LastAttemptDrawIndex int   `gorm:"not null;default:0"`
+
+	CreatedAt time.Time
 }
 
 // GameTicket — конкретная выдача билета конкретному игроку

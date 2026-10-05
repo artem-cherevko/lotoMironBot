@@ -47,7 +47,7 @@ func main() {
 	f := fsm.New(fsm2.StateDefault, nil)
 
 	// HANDLER
-	handler := handlers.NewHandler(uService, f, rdb, lotoService)
+	handler := handlers.NewHandler(uService, f, rdb, lotoService, cfg.AdminID)
 
 	// Init and start bot
 	newBot := bot.NewBot(cfg, ctx, handler)

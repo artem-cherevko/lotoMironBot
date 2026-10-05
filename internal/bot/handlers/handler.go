@@ -12,13 +12,15 @@ type Handler struct {
 	lotoService *services.LotoService
 	r           *redis.Client
 	f           *fsm.FSM
+	adminID     string
 }
 
-func NewHandler(uService *services.UserService, f *fsm.FSM, r *redis.Client, lotoService *services.LotoService) *Handler {
+func NewHandler(uService *services.UserService, f *fsm.FSM, r *redis.Client, lotoService *services.LotoService, adminID string) *Handler {
 	return &Handler{
 		uService:    uService,
 		f:           f,
 		r:           r,
 		lotoService: lotoService,
+		adminID:     adminID,
 	}
 }

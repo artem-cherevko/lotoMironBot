@@ -1,6 +1,10 @@
 package handlers
 
-import "github.com/go-telegram/bot/models"
+import (
+	"fmt"
+
+	"github.com/go-telegram/bot/models"
+)
 
 func CollectionsKeyboard() *models.InlineKeyboardMarkup {
 	return &models.InlineKeyboardMarkup{
@@ -25,6 +29,23 @@ func FinishCreateCollectionKb() *models.ReplyKeyboardMarkup {
 			{
 				{Text: " Финиш загрузки фото", IconCustomEmojiID: "5411520005386806155"},
 			},
+		},
+	}
+}
+
+func DrawBarrelKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{{
+			{Text: "🎱 Вытянуть бочонок", Style: "primary", CallbackData: "game:draw"},
+		}},
+	}
+}
+
+func ClaimNumberKeyboard(gameID uint, number int32, drawIndex int) *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{{Text: fmt.Sprintf("У меня есть %d", number), Style: "success", CallbackData: fmt.Sprintf("game:claim:%d:%d:%d", gameID, number, drawIndex)}},
+			{{Text: "Следующий бочонок", Style: "primary", CallbackData: "game:draw"}},
 		},
 	}
 }

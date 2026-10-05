@@ -62,9 +62,42 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 
 	bot.RegisterHandler(
 		bot2.HandlerTypeMessageText,
+		"/game",
+		bot2.MatchTypePrefix,
+		b.handler.CreateGame,
+	)
+
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/gticket", bot2.MatchTypePrefix, b.handler.GiveTickets)
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/mytickets", bot2.MatchTypeExact, b.handler.MyTickets)
+
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
 		"/startgame",
 		bot2.MatchTypeExact,
 		b.handler.StartGame,
+	)
+
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/endgame", bot2.MatchTypeExact, b.handler.EndGame)
+
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
+		"/promote",
+		bot2.MatchTypePrefix,
+		b.handler.PromoteAdmin,
+	)
+
+	bot.RegisterHandler(
+		bot2.HandlerTypeCallbackQueryData,
+		"game:draw",
+		bot2.MatchTypeExact,
+		b.handler.DrawBarrel,
+	)
+
+	bot.RegisterHandler(
+		bot2.HandlerTypeCallbackQueryData,
+		"game:claim:",
+		bot2.MatchTypePrefix,
+		b.handler.ClaimNumber,
 	)
 
 	return bot, nil
