@@ -1,35 +1,51 @@
-services:
-  postgres:
-    image: postgres:latest
-    container_name: loto-postgres
-    environment:
-      POSTGRES_DB: loto
-      POSTGRES_USER: loto
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-    ports:
-      - "5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  services:
+    postgres:
+      image: postgres:18.1-bookworm
+      container_name: loto-postgres
+      restart: unless-stopped
 
-  redis:
-    image: redis:latest
-    container_name: loto-redis
-    ports:
-      - "6379"
-    volumes:
-      - redis_data:/data
+      environment:
+        POSTGRES_DB: loto
+        POSTGRES_USER: loto
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: loto-app
-    volumes:
-      - ./.env:/app/.env:ro
-    depends_on:
-      - postgres
-      - redis
+      volumes:
+        - postgres_data:/var/lib/postgresql
 
-volumes:
-  postgres_data:
-  redis_data:
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U loto -d loto"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+
+      security_opt:
+        - no-new-privileges:true
+    redis:
+      image: redis:7-alpine
+      container_name: loto-redis
+      restart: unless-stopped
+      volumes:
+        - redis_data:/data
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+
+    app:
+      image: ghcr.io/artem-cherevko/lotomironbot:sha-bf0e9f7
+      container_name: loto-app
+      restart: unless-stopped
+      env_file:
+        - .env
+      volumes:
+        - ./.env:/app/.env:ro
+      depends_on:
+        postgres:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+
+  volumes:
+    postgres_data:
+    redis_data:

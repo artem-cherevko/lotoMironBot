@@ -14,7 +14,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -74,15 +73,7 @@ func (w *Worker) Process(ctx context.Context, fileID string) ([]int32, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command(
-		"curl",
-		"-L",
-		"-o",
-		path,
-		link,
-	)
-
-	if err := cmd.Run(); err != nil {
+	if err := downloadFile(ctx, http.DefaultClient, path, link); err != nil {
 		return nil, err
 	}
 
@@ -113,6 +104,35 @@ func (w *Worker) Process(ctx context.Context, fileID string) ([]int32, error) {
 	}
 
 	return numbers, nil
+}
+
+func downloadFile(ctx context.Context, client *http.Client, path, url string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("create image download request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("download image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("download image: unexpected HTTP status %s", resp.Status)
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create image file: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, resp.Body); err != nil {
+		return fmt.Errorf("save downloaded image: %w", err)
+	}
+
+	return nil
 }
 
 func (w *Worker) OCR(ctx context.Context, path string) ([]int32, error) {
