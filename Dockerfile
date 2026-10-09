@@ -1,25 +1,28 @@
 # ===== Build =====
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
 
-# Зависимости
+# Dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Исходники
+# Source code
 COPY . .
 
-# Сборка
-RUN CGO_ENABLED=0 GOOS=linux go build -o lotoMironBot ./cmd/app/
+# Build
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o lotoMironBot ./cmd/app/
 
 # ===== Runtime =====
-FROM alpine:latest
+FROM alpine:3.22
 
 WORKDIR /app
 
-# Сертификаты нужны для HTTPS/TG API
-RUN apk --no-cache add ca-certificates
+# HTTPS certificates for Telegram API
+RUN apk --no-cache add ca-certificates tzdata
 
 COPY --from=builder /app/lotoMironBot .
 
