@@ -302,35 +302,26 @@ func (s *LotoService) GiveTickets(ctx context.Context, chatID, playerID int64, d
 			}
 		}
 
-		assigned, err := repo.ListPlayerGameTickets(ctx, game.ID, playerID)
+		available, err := repo.ListAvailableTickets(ctx, game.ID, game.Collection, desiredCount)
 		if err != nil {
 			return err
 		}
-		if len(assigned) > desiredCount {
-			return ErrExistingTicketCount
-		}
-		missing := desiredCount - len(assigned)
-		available, err := repo.ListAvailableTickets(ctx, game.ID, game.Collection, missing)
-		if err != nil {
-			return err
-		}
-		if len(available) != missing {
+		if len(available) != desiredCount {
 			return ErrNotEnoughTickets
 		}
+		newlyAssigned := make([]*database.GameTicket, 0, len(available))
 		for _, ticket := range available {
-			if _, err := repo.CreateGameTicket(ctx, &database.GameTicket{
+			gameTicket, err := repo.CreateGameTicket(ctx, &database.GameTicket{
 				GameID: game.ID, PlayerID: playerID, TicketID: ticket.ID,
 				Numbers: append(pq.Int32Array(nil), ticket.Numbers...),
-			}); err != nil {
+			})
+			if err != nil {
 				return err
 			}
+			newlyAssigned = append(newlyAssigned, gameTicket)
 		}
 
-		assigned, err = repo.ListPlayerGameTickets(ctx, game.ID, playerID)
-		if err != nil {
-			return err
-		}
-		for _, gameTicket := range assigned {
+		for _, gameTicket := range newlyAssigned {
 			ticket, err := repo.GetTicketByID(ctx, gameTicket.TicketID)
 			if err != nil {
 				return err

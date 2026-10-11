@@ -301,8 +301,6 @@ func gameErrorText(err error) string {
 		return "Лимит участников уже достигнут."
 	case errors.Is(err, services.ErrInvalidGiveCount):
 		return "Количество билетов должно быть от 1 до 5."
-	case errors.Is(err, services.ErrExistingTicketCount):
-		return "У игрока уже назначено больше билетов, чем указано."
 	case errors.Is(err, services.ErrNotEnoughTickets):
 		return "В коллекции больше нет билетов в таком количестве."
 	case errors.Is(err, services.ErrGameNotReady):
