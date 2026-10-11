@@ -28,6 +28,7 @@ var (
 	ErrGameNotRunning      = errors.New("game is not running")
 	ErrDeckExhausted       = errors.New("all barrels have already been drawn")
 	ErrInvalidGiveCount    = errors.New("ticket quantity must be from 1 to 5")
+	ErrNotEnoughTickets    = errors.New("not enough available tickets in collection")
 	ErrExistingTicketCount = errors.New("player already has more tickets than requested")
 	ErrClaimWindowOpen     = errors.New("the current number is still available for 15 seconds")
 	ErrClaimWindowExpired  = errors.New("the 15-second answer window has expired")
@@ -314,9 +315,8 @@ func (s *LotoService) GiveTickets(ctx context.Context, chatID, playerID int64, d
 			return err
 		}
 		if len(available) != missing {
-			return fmt.Errorf("not enough available tickets in collection")
+			return ErrNotEnoughTickets
 		}
-		rand.Shuffle(len(available), func(i, j int) { available[i], available[j] = available[j], available[i] })
 		for _, ticket := range available {
 			if _, err := repo.CreateGameTicket(ctx, &database.GameTicket{
 				GameID: game.ID, PlayerID: playerID, TicketID: ticket.ID,

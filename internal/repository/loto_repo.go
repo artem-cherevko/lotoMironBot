@@ -246,7 +246,7 @@ func (r *LotoRepository) ListAvailableTickets(ctx context.Context, gameID uint, 
 	err := r.db.WithContext(ctx).
 		Where("collection = ?", collection).
 		Where("NOT EXISTS (SELECT 1 FROM game_tickets WHERE game_tickets.game_id = ? AND game_tickets.ticket_id = tickets.id)", gameID).
-		Order("id ASC").
+		Order("RANDOM()").
 		Limit(limit).
 		Find(&tickets).Error
 	return tickets, err
