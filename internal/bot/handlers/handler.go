@@ -8,19 +8,21 @@ import (
 )
 
 type Handler struct {
-	uService    *services.UserService
-	lotoService *services.LotoService
-	r           *redis.Client
-	f           *fsm.FSM
-	adminID     string
+	uService           *services.UserService
+	lotoService        *services.LotoService
+	r                  *redis.Client
+	f                  *fsm.FSM
+	adminID            string
+	maintenanceAdminID string
 }
 
 func NewHandler(uService *services.UserService, f *fsm.FSM, r *redis.Client, lotoService *services.LotoService, adminID string) *Handler {
 	return &Handler{
-		uService:    uService,
-		f:           f,
-		r:           r,
-		lotoService: lotoService,
-		adminID:     adminID,
+		uService:           uService,
+		f:                  f,
+		r:                  r,
+		lotoService:        lotoService,
+		adminID:            adminID,
+		maintenanceAdminID: adminID,
 	}
 }

@@ -22,6 +22,7 @@ func NewBot(cfg *config.Config, ctx context.Context, handler *handlers.Handler) 
 func (b *Bot) Build() (*bot2.Bot, error) {
 	opts := []bot2.Option{
 		bot2.WithDefaultHandler(b.handler.Default),
+		bot2.WithMiddlewares(b.MaintenanceMiddleware),
 	}
 
 	bot, err := bot2.New(b.cfg.BotToken, opts...)
@@ -44,6 +45,12 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 		"/start",
 		bot2.MatchTypeExact,
 		b.handler.Start,
+	)
+	bot.RegisterHandler(
+		bot2.HandlerTypeMessageText,
+		"/maintenance",
+		bot2.MatchTypePrefix,
+		b.handler.Maintenance,
 	)
 
 	bot.RegisterHandler(
