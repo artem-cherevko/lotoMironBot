@@ -17,7 +17,7 @@ type MaintenanceConfig struct {
 	Mode string `json:"mode"`
 }
 
-const maintenanceConfigPath = "maintenance.json"
+const maintenanceConfigPath = "/app/maintenance.json"
 
 func loadMaintenanceConfig(path string) (*MaintenanceConfig, error) {
 	data, err := os.ReadFile(path)

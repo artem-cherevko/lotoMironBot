@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -42,7 +44,8 @@ func (h *Handler) Maintenance(ctx context.Context, b *bot.Bot, update *models.Up
 	}
 
 	if err := saveMaintenanceConfig("/app/maintenance.json", mode); err != nil {
-		sendText(ctx, b, chatID, "Не удалось сохранить режим обслуживания.")
+		log.Printf("can't save maintenance mode: %v", err)
+		sendText(ctx, b, chatID, fmt.Sprintf("Не удалось сохранить режим обслуживания: %v", err))
 		return
 	}
 
