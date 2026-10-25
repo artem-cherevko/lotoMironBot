@@ -79,10 +79,20 @@ func (h *Handler) GiveTickets(ctx context.Context, b *bot.Bot, update *models.Up
 		}
 	}
 	if sent != len(assignments) {
-		sendText(ctx, b, update.Message.Chat.ID, fmt.Sprintf("Назначено билетов: %d из %d отправлены в личные сообщения. Повторите /gticket %d ответом на это сообщение игрока для повторной отправки.", len(assignments), sent, count))
+		used, total, inventoryErr := h.lotoService.GetGameTicketInventory(ctx, update.Message.Chat.ID)
+		inventoryText := ""
+		if inventoryErr == nil {
+			inventoryText = fmt.Sprintf(" В коллекции игры использовано %d из %d билетов, свободно %d.", used, total, total-used)
+		}
+		sendText(ctx, b, update.Message.Chat.ID, fmt.Sprintf("Назначено билетов: %d из %d отправлены в личные сообщения. Повторите /gticket %d ответом на это сообщение игрока для повторной отправки.%s", len(assignments), sent, count, inventoryText))
 		return
 	}
-	sendText(ctx, b, update.Message.Chat.ID, fmt.Sprintf("Игроку выдано билетов: %d.", len(assignments)))
+	used, total, err := h.lotoService.GetGameTicketInventory(ctx, update.Message.Chat.ID)
+	if err != nil {
+		sendText(ctx, b, update.Message.Chat.ID, fmt.Sprintf("Игроку выдано билетов: %d.", len(assignments)))
+		return
+	}
+	sendText(ctx, b, update.Message.Chat.ID, fmt.Sprintf("Игроку выдано билетов: %d. В коллекции игры использовано %d из %d билетов, свободно %d.", len(assignments), used, total, total-used))
 }
 
 func (h *Handler) MyTickets(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -301,6 +311,8 @@ func gameErrorText(err error) string {
 		return "Лимит участников уже достигнут."
 	case errors.Is(err, services.ErrInvalidGiveCount):
 		return "Количество билетов должно быть от 1 до 5."
+	case errors.Is(err, services.ErrPlayerTicketLimit):
+		return "Игрок уже получил максимум 5 билетов в этой игре."
 	case errors.Is(err, services.ErrNotEnoughTickets):
 		return "В коллекции больше нет билетов в таком количестве."
 	case errors.Is(err, services.ErrGameNotReady):

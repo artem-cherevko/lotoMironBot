@@ -28,6 +28,7 @@ var (
 	ErrGameNotRunning      = errors.New("game is not running")
 	ErrDeckExhausted       = errors.New("all barrels have already been drawn")
 	ErrInvalidGiveCount    = errors.New("ticket quantity must be from 1 to 5")
+	ErrPlayerTicketLimit   = errors.New("player ticket limit has been reached")
 	ErrNotEnoughTickets    = errors.New("not enough available tickets in collection")
 	ErrExistingTicketCount = errors.New("player already has more tickets than requested")
 	ErrClaimWindowOpen     = errors.New("the current number is still available for 15 seconds")
@@ -291,6 +292,13 @@ func (s *LotoService) GiveTickets(ctx context.Context, chatID, playerID int64, d
 		if game.Status != database.GamePending {
 			return ErrRecruitmentClosed
 		}
+		currentCount, err := repo.CountPlayerGameTickets(ctx, game.ID, playerID)
+		if err != nil {
+			return err
+		}
+		if currentCount+int64(desiredCount) > 5 {
+			return ErrPlayerTicketLimit
+		}
 
 		registered, err := repo.IsGameParticipant(ctx, game.ID, playerID)
 		if err != nil {
@@ -331,6 +339,24 @@ func (s *LotoService) GiveTickets(ctx context.Context, chatID, playerID int64, d
 		return nil
 	})
 	return assignments, err
+}
+
+// GetGameTicketInventory returns the assigned and total ticket counts for the
+// collection used by the active game in this chat.
+func (s *LotoService) GetGameTicketInventory(ctx context.Context, chatID int64) (used, total int64, err error) {
+	game, err := s.repo.FindActiveGameByChat(ctx, chatID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, 0, ErrGameNotFound
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+	used, err = s.repo.CountGameTickets(ctx, game.ID)
+	if err != nil {
+		return 0, 0, err
+	}
+	total, err = s.repo.CountCollectionTickets(ctx, game.Collection)
+	return used, total, err
 }
 
 func (s *LotoService) GetPlayerTickets(ctx context.Context, chatID, playerID int64) ([]*database.Ticket, error) {

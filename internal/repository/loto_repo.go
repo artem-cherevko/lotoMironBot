@@ -192,6 +192,22 @@ func (r *LotoRepository) CountPlayerGameTickets(ctx context.Context, gameID uint
 	return count, err
 }
 
+func (r *LotoRepository) CountGameTickets(ctx context.Context, gameID uint) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&database.GameTicket{}).
+		Where("game_id = ?", gameID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *LotoRepository) CountCollectionTickets(ctx context.Context, collection database.Collections) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&database.Ticket{}).
+		Where("collection = ?", collection).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *LotoRepository) SaveSettings(ctx context.Context, key, value string) error {
 	setting := database.GameSettings{Key: key, Value: value}
 	return r.db.WithContext(ctx).Save(&setting).Error
