@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -61,18 +60,16 @@ func saveMaintenanceConfig(path, mode string) error {
 	}
 	data = append(data, '\n')
 
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".maintenance-*.json")
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("open maintenance config: %w", err)
 	}
-	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return err
+	if _, err := file.Write(data); err != nil {
+		file.Close()
+		return fmt.Errorf("write maintenance config: %w", err)
 	}
-	if err := tmp.Close(); err != nil {
-		return err
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close maintenance config: %w", err)
 	}
-	return os.Rename(tmpPath, path)
+	return nil
 }
