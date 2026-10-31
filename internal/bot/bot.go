@@ -86,6 +86,8 @@ func (b *Bot) Build() (*bot2.Bot, error) {
 
 	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/endgame", bot2.MatchTypeExact, b.handler.EndGame)
 
+	bot.RegisterHandler(bot2.HandlerTypeMessageText, "/img", bot2.MatchTypeExact, b.handler.Img)
+
 	bot.RegisterHandler(
 		bot2.HandlerTypeMessageText,
 		"/promote",

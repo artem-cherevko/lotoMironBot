@@ -14,6 +14,7 @@ const (
 	StateProvidePhotos    fsm.StateID = "provide_photos"
 	StateFinish           fsm.StateID = "finish"
 	StateOwnerRules       fsm.StateID = "owner_rules"
+	StateImageID          fsm.StateID = "image_id"
 
 	DataFileIDs = "data-file-ids"
 )

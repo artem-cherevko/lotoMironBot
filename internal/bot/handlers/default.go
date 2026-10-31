@@ -59,6 +59,12 @@ func (h *Handler) Default(ctx context.Context, b *bot.Bot, update *models.Update
 	case fsm2.StateSelectCollection:
 		h.selectCollection(ctx, b, update)
 
+	case fsm2.StateImageID:
+		if update.Message == nil || update.Message.Photo == nil {
+			return
+		}
+		h.provideImageID(ctx, b, update)
+
 	case fsm2.StateProvidePhotos:
 		if update.Message.Text == "Финиш загрузки фото" {
 			b.SendMessage(ctx, &bot.SendMessageParams{
